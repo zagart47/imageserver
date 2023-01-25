@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = ".;pb";
+
+service FileService {
+  rpc Upload(stream UploadRequest) returns (UploadResponse) {}
+  rpc GetFiles(GetFilesRequest) returns (GetFilesResponse) {}
+  rpc Download(DownloadRequest) returns (stream DownloadResponse) {}
+}
+
+message DownloadRequest {
+  string filename = 1;
+}
+
+message DownloadResponse {
+  string filename = 1;
+  bytes fragment = 2;
+}
+
+message UploadRequest {
+  string filename = 1;
+  bytes fragment = 2;
+}
+
+message UploadResponse {
+  string name = 1;
+}
+
+message GetFilesRequest {}
+
+message GetFilesResponse{
+  repeated File info = 1;
+}
+
+message File {
+  string file_name = 1;
+  string created = 2;
+  string updated = 3;
+}
