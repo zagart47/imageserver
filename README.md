@@ -16,6 +16,11 @@ git clone https://github.com/zagart47/imageserver.git
 go run api/server.go
 ```
 
+## You need use the client to work with this server!!!
+```html
+https://github.com/zagart47/imageclient
+```
+
 ### Upload Image RPC
 ```
 rpc Upload(stream UploadRequest) returns (UploadResponse) {}
@@ -36,12 +41,12 @@ rpc GetFiles(GetFilesRequest) returns (GetFilesResponse) {}
 
 message GetFilesRequest {}
 message GetFilesResponse{
-repeated File info = 1;
+  repeated File info = 1;
 }
 message File {
-string file_name = 1;
-string created = 2;
-string updated = 3;
+  string file_name = 1;
+  string created = 2;
+  string updated = 3;
 }
 ```
 
