@@ -11,6 +11,11 @@ git clone https://github.com/zagart47/imageserver.git
 ```
 
 ## Usage
+### Start server
+```bash
+go run api/server.go
+```
+
 ### Upload Image RPC
 ```
 rpc Upload(stream UploadRequest) returns (UploadResponse) {}
