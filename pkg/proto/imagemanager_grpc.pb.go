@@ -23,7 +23,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FileServiceClient interface {
 	Upload(ctx context.Context, opts ...grpc.CallOption) (FileService_UploadClient, error)
-	GetFiles(ctx context.Context, in *GetFilesRequest, opts ...grpc.CallOption) (*GetFilesResponse, error)
 	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (FileService_DownloadClient, error)
 }
 
@@ -69,15 +68,6 @@ func (x *fileServiceUploadClient) CloseAndRecv() (*UploadResponse, error) {
 	return m, nil
 }
 
-func (c *fileServiceClient) GetFiles(ctx context.Context, in *GetFilesRequest, opts ...grpc.CallOption) (*GetFilesResponse, error) {
-	out := new(GetFilesResponse)
-	err := c.cc.Invoke(ctx, "/proto.FileService/GetFiles", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *fileServiceClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (FileService_DownloadClient, error) {
 	stream, err := c.cc.NewStream(ctx, &FileService_ServiceDesc.Streams[1], "/proto.FileService/Download", opts...)
 	if err != nil {
@@ -115,7 +105,6 @@ func (x *fileServiceDownloadClient) Recv() (*DownloadResponse, error) {
 // for forward compatibility
 type FileServiceServer interface {
 	Upload(FileService_UploadServer) error
-	GetFiles(context.Context, *GetFilesRequest) (*GetFilesResponse, error)
 	Download(*DownloadRequest, FileService_DownloadServer) error
 	mustEmbedUnimplementedFileServiceServer()
 }
@@ -126,9 +115,6 @@ type UnimplementedFileServiceServer struct {
 
 func (UnimplementedFileServiceServer) Upload(FileService_UploadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Upload not implemented")
-}
-func (UnimplementedFileServiceServer) GetFiles(context.Context, *GetFilesRequest) (*GetFilesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetFiles not implemented")
 }
 func (UnimplementedFileServiceServer) Download(*DownloadRequest, FileService_DownloadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Download not implemented")
@@ -172,24 +158,6 @@ func (x *fileServiceUploadServer) Recv() (*UploadRequest, error) {
 	return m, nil
 }
 
-func _FileService_GetFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetFilesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FileServiceServer).GetFiles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.FileService/GetFiles",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileServiceServer).GetFiles(ctx, req.(*GetFilesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _FileService_Download_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(DownloadRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -217,12 +185,7 @@ func (x *fileServiceDownloadServer) Send(m *DownloadResponse) error {
 var FileService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.FileService",
 	HandlerType: (*FileServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetFiles",
-			Handler:    _FileService_GetFiles_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Upload",
@@ -235,5 +198,91 @@ var FileService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
+	Metadata: "pkg/proto/imagemanager.proto",
+}
+
+// ListServiceClient is the client API for ListService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ListServiceClient interface {
+	GetFiles(ctx context.Context, in *GetFilesRequest, opts ...grpc.CallOption) (*GetFilesResponse, error)
+}
+
+type listServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewListServiceClient(cc grpc.ClientConnInterface) ListServiceClient {
+	return &listServiceClient{cc}
+}
+
+func (c *listServiceClient) GetFiles(ctx context.Context, in *GetFilesRequest, opts ...grpc.CallOption) (*GetFilesResponse, error) {
+	out := new(GetFilesResponse)
+	err := c.cc.Invoke(ctx, "/proto.ListService/GetFiles", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListServiceServer is the server API for ListService service.
+// All implementations must embed UnimplementedListServiceServer
+// for forward compatibility
+type ListServiceServer interface {
+	GetFiles(context.Context, *GetFilesRequest) (*GetFilesResponse, error)
+	mustEmbedUnimplementedListServiceServer()
+}
+
+// UnimplementedListServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedListServiceServer struct {
+}
+
+func (UnimplementedListServiceServer) GetFiles(context.Context, *GetFilesRequest) (*GetFilesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFiles not implemented")
+}
+func (UnimplementedListServiceServer) mustEmbedUnimplementedListServiceServer() {}
+
+// UnsafeListServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ListServiceServer will
+// result in compilation errors.
+type UnsafeListServiceServer interface {
+	mustEmbedUnimplementedListServiceServer()
+}
+
+func RegisterListServiceServer(s grpc.ServiceRegistrar, srv ListServiceServer) {
+	s.RegisterService(&ListService_ServiceDesc, srv)
+}
+
+func _ListService_GetFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListServiceServer).GetFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.ListService/GetFiles",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListServiceServer).GetFiles(ctx, req.(*GetFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// ListService_ServiceDesc is the grpc.ServiceDesc for ListService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ListService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.ListService",
+	HandlerType: (*ListServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetFiles",
+			Handler:    _ListService_GetFiles_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "pkg/proto/imagemanager.proto",
 }

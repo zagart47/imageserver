@@ -7,7 +7,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"imageserver/db"
-	"imageserver/internal"
 	"imageserver/model"
 	pb "imageserver/pkg/proto"
 	"io"
@@ -15,30 +14,41 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func Start() {
-	listener, err := net.Listen("tcp", "0.0.0.0:80")
+	listener1, err := net.Listen("tcp", "0.0.0.0:80")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer listener.Close()
-	sm := &internal.ServerMiddleware{}
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(sm.Interceptor))
-	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+	defer listener1.Close()
+	grpcServer1 := grpc.NewServer(grpc.MaxConcurrentStreams(10))
+	pb.RegisterFileServiceServer(grpcServer1, &Server{})
+	defer grpcServer1.GracefulStop()
+
+	listener2, err := net.Listen("tcp", "0.0.0.0:81")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer listener2.Close()
+	grpcServer2 := grpc.NewServer(grpc.MaxConcurrentStreams(100))
+	pb.RegisterListServiceServer(grpcServer2, &ListServer{})
+	defer grpcServer2.GracefulStop()
 	go func() {
-		<-signalCh
-		grpcServer.GracefulStop()
+		log.Fatal(grpcServer1.Serve(listener1))
 	}()
-	pb.RegisterFileServiceServer(grpcServer, &Server{})
-	log.Fatal(grpcServer.Serve(listener))
+	log.Fatal(grpcServer2.Serve(listener2))
+
+	switch {
+	}
 }
 
 type Server struct {
 	pb.UnimplementedFileServiceServer
+}
+
+type ListServer struct {
+	pb.UnimplementedListServiceServer
 }
 
 func (s Server) Download(request *pb.DownloadRequest, server pb.FileService_DownloadServer) error {
@@ -73,7 +83,7 @@ func (s Server) Download(request *pb.DownloadRequest, server pb.FileService_Down
 	return nil
 }
 
-func (s Server) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFilesResponse, error) {
+func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFilesResponse, error) {
 	fileRepository := db.NewSQLiteRepository(db.DB)
 	all := fileRepository.All()
 	return &pb.GetFilesResponse{Info: all}, nil

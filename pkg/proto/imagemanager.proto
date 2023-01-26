@@ -6,8 +6,11 @@ option go_package = ".;pb";
 
 service FileService {
   rpc Upload(stream UploadRequest) returns (UploadResponse) {}
-  rpc GetFiles(GetFilesRequest) returns (GetFilesResponse) {}
   rpc Download(DownloadRequest) returns (stream DownloadResponse) {}
+}
+
+service ListService {
+  rpc GetFiles(GetFilesRequest) returns (GetFilesResponse) {}
 }
 
 message DownloadRequest {
