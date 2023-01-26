@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"github.com/mattn/go-sqlite3"
 	_ "github.com/mattn/go-sqlite3"
 	uploadpb "imageserver/pkg/proto"
 	"time"
@@ -91,15 +90,6 @@ func (r *SQLiteRepository) Create(filename string) error {
 	}
 	_, err := r.db.Exec("INSERT INTO files(file_name, created, updated) values(?,?,?)", filename, CurrentTime(), "have no update")
 	if err != nil {
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
-				err = r.Update(filename)
-				if err != nil {
-					return err
-				}
-			}
-		}
 		return err
 	}
 	return nil

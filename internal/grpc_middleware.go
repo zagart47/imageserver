@@ -16,15 +16,15 @@ type ServerMiddleware struct {
 func (sm *ServerMiddleware) Interceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 
 	switch info.FullMethod {
-	case "/proto.FileService/UploadRequest",
-		"/proto.FileService/DownloadRequest":
+	case "/proto.FileService/Upload",
+		"/proto.FileService/Download":
 		if atomic.LoadInt64(&sm.loadConn) > 10 {
 			return nil, status.Errorf(codes.ResourceExhausted, "%s is rejected, please retry later", info.FullMethod)
 		}
 		atomic.AddInt64(&sm.loadConn, 1)
 		defer atomic.AddInt64(&sm.loadConn, -1)
 		return handler(ctx, req)
-	case "/proto.FileService/GetFilesRequest":
+	case "/proto.FileService/GetFiles":
 		if atomic.LoadInt64(&sm.getListConn) > 100 {
 			return nil, status.Errorf(codes.ResourceExhausted, "%s is rejected, please retry later", info.FullMethod)
 		}
