@@ -16,7 +16,7 @@ git clone https://github.com/zagart47/imageserver.git
 go run api/server.go
 ```
 
-## You need use the client to work with this server!!!
+# Attention! You need use the client to work with this server!!!
 ```html
 https://github.com/zagart47/imageclient
 ```
