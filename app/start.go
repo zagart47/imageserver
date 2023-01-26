@@ -10,7 +10,6 @@ import (
 	"imageserver/model"
 	pb "imageserver/pkg/proto"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -62,6 +61,9 @@ func (s Server) Download(request *pb.DownloadRequest, server pb.FileService_Down
 	defer file.Close()
 	resp := &pb.DownloadResponse{Filename: name}
 	err = server.Send(resp)
+	if err != nil {
+		return err
+	}
 	buff := make([]byte, bufferSize)
 	for {
 		bytesRead, err := file.Read(buff)
@@ -76,7 +78,6 @@ func (s Server) Download(request *pb.DownloadRequest, server pb.FileService_Down
 		}
 		err = server.Send(resp)
 		if err != nil {
-			log.Println("error while sending chunk:", err)
 			return err
 		}
 	}
@@ -96,10 +97,13 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			ioutil.WriteFile("files/"+nameData.GetFilename(), req.GetFragment(), 0644)
-			err := fileRepository.CheckFileName(name.FileName)
-			if err != nil {
-				return err
+			err1 := os.WriteFile("files/"+nameData.GetFilename(), req.GetFragment(), 0644)
+			if err1 != nil {
+				return err1
+			}
+			err2 := fileRepository.CheckFileName(name.FileName)
+			if err2 != nil {
+				return err2
 			}
 			return stream.SendAndClose(&pb.UploadResponse{Name: name.FileName})
 
