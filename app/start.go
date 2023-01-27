@@ -38,8 +38,6 @@ func Start() {
 	}()
 	log.Fatal(grpcServer2.Serve(listener2))
 
-	switch {
-	}
 }
 
 type Server struct {
