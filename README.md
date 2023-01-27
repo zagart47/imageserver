@@ -13,6 +13,7 @@ git clone https://github.com/zagart47/imageserver.git
 ## Usage
 ### Start server
 ```bash
+cd imageserver
 go run api/server.go
 ```
 
