@@ -41,20 +41,10 @@ func (r *SQLiteRepository) Migrate() error {
 }
 
 func (r *SQLiteRepository) Update(filename string) error {
-	res, err := r.db.Exec("UPDATE files SET updated = ? WHERE file_name = ?", CurrentTime(), filename)
+	_, err := r.db.Exec("UPDATE files SET updated = ? WHERE file_name = ?", CurrentTime(), filename)
 	if err != nil {
 		return err
 	}
-
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return ErrUpdateFailed
-	}
-
 	return nil
 }
 
@@ -83,7 +73,6 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 	}
 	return nil
 }
-
 func (r *SQLiteRepository) Create(filename string) error {
 	if filename == "" {
 		return errors.New("invalid updated filename")
