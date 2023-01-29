@@ -70,10 +70,15 @@ func TestSQLiteRepository_CheckFileName(t *testing.T) {
 		err := r.CheckFileName("fail")
 		require.NoError(t, err)
 	})
+	t.Run("4test", func(t *testing.T) {
+		err := r.CheckFileName("")
+		require.Error(t, err)
+	})
+
+	db.Close()
 	t.Run("3test", func(t *testing.T) {
-		os.Remove(testfile)
 		err := r.CheckFileName("test")
-		require.NoError(t, err)
+		require.Error(t, err)
 	})
 
 }
@@ -113,8 +118,11 @@ func TestSQLiteRepository_Migrate(t *testing.T) {
 	defer db.Close()
 	require.NoError(t, err)
 	r := NewSQLiteRepository(db)
-	err = r.Migrate()
-	require.NoError(t, err)
+
+	t.Run("1test", func(t *testing.T) {
+		err = r.Migrate()
+		require.NoError(t, err)
+	})
 }
 
 func TestSQLiteRepository_Update(t *testing.T) {
@@ -143,6 +151,11 @@ func TestSQLiteRepository_Update(t *testing.T) {
 		require.NoError(t, err)
 		err = r.Update("test")
 		require.NoError(t, err)
+	})
+	db.Close()
+	t.Run("3test", func(t *testing.T) {
+		err = r.Update("test")
+		require.Error(t, err)
 	})
 
 }

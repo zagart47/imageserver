@@ -84,7 +84,10 @@ func (s Server) Download(request *pb.DownloadRequest, server pb.FileService_Down
 
 func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFilesResponse, error) {
 	fileRepository := db.NewSQLiteRepository(db.DB)
-	all := fileRepository.All()
+	all, err := fileRepository.All()
+	if err != nil {
+		return nil, err
+	}
 	return &pb.GetFilesResponse{Info: all}, nil
 }
 

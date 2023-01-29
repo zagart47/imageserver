@@ -49,11 +49,14 @@ func (r *SQLiteRepository) Update(filename string) error {
 }
 
 func (r *SQLiteRepository) CheckFileName(filename string) error {
+	if filename == "" {
+		return errors.New("invalid updated filename")
+	}
 	err := r.Migrate()
 	if err != nil {
 		return err
 	}
-	all := r.All()
+	all, err := r.All()
 	var status bool
 	for _, v := range all {
 		if v.FileName == filename {
@@ -74,9 +77,7 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 	return nil
 }
 func (r *SQLiteRepository) Create(filename string) error {
-	if filename == "" {
-		return errors.New("invalid updated filename")
-	}
+
 	_, err := r.db.Exec("INSERT INTO files(file_name, created, updated) values(?,?,?)", filename, CurrentTime(), "have no update")
 	if err != nil {
 		return err
@@ -84,10 +85,10 @@ func (r *SQLiteRepository) Create(filename string) error {
 	return nil
 }
 
-func (r *SQLiteRepository) All() []*uploadpb.File {
+func (r *SQLiteRepository) All() ([]*uploadpb.File, error) {
 	rows, err := r.db.Query("SELECT file_name, created, updated FROM files")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -95,11 +96,11 @@ func (r *SQLiteRepository) All() []*uploadpb.File {
 	for rows.Next() {
 		var file uploadpb.File
 		if err := rows.Scan(&file.FileName, &file.Created, &file.Updated); err != nil {
-			return nil
+			return nil, err
 		}
 		all = append(all, &file)
 	}
-	return all
+	return all, nil
 }
 
 func CurrentTime() string {
