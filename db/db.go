@@ -64,20 +64,13 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 		}
 	}
 	if status {
-		err := r.Update(filename)
-		if err != nil {
-			return err
-		}
+		_ = r.Update(filename)
 	} else {
-		err := r.Create(filename)
-		if err != nil {
-			return err
-		}
+		_ = r.Create(filename)
 	}
 	return nil
 }
 func (r *SQLiteRepository) Create(filename string) error {
-
 	_, err := r.db.Exec("INSERT INTO files(file_name, created, updated) values(?,?,?)", filename, CurrentTime(), "have no update")
 	if err != nil {
 		return err
@@ -86,18 +79,17 @@ func (r *SQLiteRepository) Create(filename string) error {
 }
 
 func (r *SQLiteRepository) All() ([]*uploadpb.File, error) {
-	rows, err := r.db.Query("SELECT file_name, created, updated FROM files")
+	err := r.Migrate()
 	if err != nil {
 		return nil, err
 	}
+	rows, _ := r.db.Query("SELECT file_name, created, updated FROM files")
 	defer rows.Close()
 
 	var all []*uploadpb.File
 	for rows.Next() {
 		var file uploadpb.File
-		if err := rows.Scan(&file.FileName, &file.Created, &file.Updated); err != nil {
-			return nil, err
-		}
+		_ = rows.Scan(&file.FileName, &file.Created, &file.Updated)
 		all = append(all, &file)
 	}
 	return all, nil

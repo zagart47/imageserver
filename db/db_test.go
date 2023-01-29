@@ -37,13 +37,21 @@ func TestSQLiteRepository_All(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("1test", func(t *testing.T) {
-		r.All()
+		_, err := r.All()
+		require.NoError(t, err)
 	})
 
 	t.Run("2test", func(t *testing.T) {
 		_, err = db.Exec("drop table files")
 		require.NoError(t, err)
-		r.All()
+		_, err := r.All()
+		require.NoError(t, err)
+	})
+
+	db.Close()
+	t.Run("3test", func(t *testing.T) {
+		_, err := r.All()
+		require.Error(t, err)
 	})
 
 }
