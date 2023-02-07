@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"imageserver/db"
-	"imageserver/model"
 	pb "imageserver/pkg/proto"
 	"io"
 	"log"
@@ -92,21 +92,26 @@ func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFile
 }
 
 func (s Server) Upload(stream pb.FileService_UploadServer) error {
+	md, ok := metadata.FromIncomingContext(stream.Context())
+	if !ok {
+		return fmt.Errorf("md incoming error")
+	}
+	fileName := md.Get("filename")[0]
+
 	fileRepository := db.NewSQLiteRepository(db.DB)
-	nameData, _ := stream.Recv()
-	name := model.File{FileName: nameData.GetFilename()}
+
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			err1 := os.WriteFile("files/"+nameData.GetFilename(), req.GetFragment(), 0644)
+			err1 := os.WriteFile("files/"+fileName, req.GetFragment(), 0644)
 			if err1 != nil {
 				return err1
 			}
-			err2 := fileRepository.CheckFileName(name.FileName)
+			err2 := fileRepository.CheckFileName("filename.png")
 			if err2 != nil {
 				return err2
 			}
-			return stream.SendAndClose(&pb.UploadResponse{Name: name.FileName})
+			return stream.SendAndClose(&pb.UploadResponse{Name: "filename.png"})
 
 		}
 		if err != nil {
