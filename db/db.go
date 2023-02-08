@@ -21,9 +21,9 @@ type SQLiteRepository struct {
 	db *sql.DB
 }
 
-func NewSQLiteRepository(db *sql.DB) *SQLiteRepository {
+func NewSQLiteRepository() *SQLiteRepository {
 	return &SQLiteRepository{
-		db: db,
+		db: DB,
 	}
 }
 
