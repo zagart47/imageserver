@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
@@ -100,10 +101,12 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 
 	fileRepository := db.NewSQLiteRepository(db.DB)
 
+	var fileBuffer bytes.Buffer
+
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			err1 := os.WriteFile("files/"+fileName, req.GetFragment(), 0644)
+			err1 := os.WriteFile("files/"+fileName, fileBuffer.Bytes(), 0644)
 			if err1 != nil {
 				return err1
 			}
@@ -114,6 +117,7 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 			return stream.SendAndClose(&pb.UploadResponse{Name: "filename.png"})
 
 		}
+		fileBuffer.Write(req.GetFragment())
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
