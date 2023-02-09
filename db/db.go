@@ -57,18 +57,12 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 		return err
 	}
 	all, err := r.All()
-	var status bool
 	for _, v := range all {
 		if v.FileName == filename {
-			status = true
+			return errors.New("file found")
 		}
 	}
-	if status {
-		_ = r.Update(filename)
-	} else {
-		_ = r.Create(filename)
-	}
-	return nil
+	return errors.New("file not found")
 }
 func (r *SQLiteRepository) Create(filename string) error {
 	_, err := r.db.Exec("INSERT INTO files(file_name, created, updated) values(?,?,?)", filename, CurrentTime(), "have no update")

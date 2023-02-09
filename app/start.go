@@ -49,35 +49,36 @@ type ListServer struct {
 	pb.UnimplementedListServiceServer
 }
 
-func (s Server) Download(request *pb.DownloadRequest, server pb.FileService_DownloadServer) error {
-	name := request.GetFilename()
-	bufferSize := 64 * 1024
-	file, err := os.Open("files/" + name)
-	if err != nil {
-		fmt.Println(err)
+func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_DownloadServer) error {
+	md, ok := metadata.FromIncomingContext(stream.Context())
+	if !ok {
+		return fmt.Errorf("md incoming error")
+	}
+	fileName := md.Get("filename")[0]
+	f := model.NewFile(fileName)
+	repo := db.NewSQLiteRepository()
+	err := repo.CheckFileName(f.Name)
+	if err.Error() == "file not found" {
 		return err
 	}
-	defer file.Close()
-	resp := &pb.DownloadResponse{Filename: name}
-	err = server.Send(resp)
+	file, err := os.Open(f.Path)
 	if err != nil {
 		return err
 	}
-	buff := make([]byte, bufferSize)
+	buff := make([]byte, 1024*1024)
+
 	for {
-		bytesRead, err := file.Read(buff)
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println(err)
-			}
+		n, err := file.Read(buff)
+		if err == io.EOF {
 			break
 		}
-		resp = &pb.DownloadResponse{
-			Fragment: buff[:bytesRead],
-		}
-		err = server.Send(resp)
 		if err != nil {
-			return err
+			return fmt.Errorf("buffer reading error (%s)", err.Error())
+		}
+		req := &pb.DownloadResponse{Fragment: buff[:n]}
+		err1 := stream.Send(req)
+		if err1 != nil {
+			log.Fatal(err1.Error())
 		}
 	}
 	return nil
@@ -110,10 +111,18 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 				return err
 			}
 			err = repo.CheckFileName(f.Name)
-			if err != nil {
-				return err
+			if err == fmt.Errorf("file found") {
+				err := repo.Update(f.Name)
+				if err != nil {
+					return err
+				}
+			} else if err == fmt.Errorf("file not found") {
+				err := repo.Create(f.Name)
+				if err != nil {
+					return err
+				}
 			}
-			return stream.SendAndClose(&pb.UploadResponse{Name: f.Name})
+			return stream.SendAndClose(&pb.UploadResponse{})
 		}
 		f.Buffer.Write(req.GetFragment())
 		if err != nil {

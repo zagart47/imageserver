@@ -14,21 +14,17 @@ service ListService {
 }
 
 message DownloadRequest {
-  string filename = 1;
 }
 
 message DownloadResponse {
-  string filename = 1;
-  bytes fragment = 2;
+  bytes fragment = 1;
 }
 
 message UploadRequest {
-  string filename = 1;
-  bytes fragment = 2;
+  bytes fragment = 1;
 }
 
 message UploadResponse {
-  string name = 1;
 }
 
 message GetFilesRequest {}
