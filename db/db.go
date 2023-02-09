@@ -15,6 +15,8 @@ var (
 	ErrNotExists    = errors.New("row not exists")
 	ErrUpdateFailed = errors.New("update failed")
 	ErrDeleteFailed = errors.New("delete failed")
+	ErrFileFound    = errors.New("file found")
+	ErrFileNotFound = errors.New("file not found")
 )
 
 type SQLiteRepository struct {
@@ -59,10 +61,10 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 	all, err := r.All()
 	for _, v := range all {
 		if v.FileName == filename {
-			return errors.New("file found")
+			return ErrFileFound
 		}
 	}
-	return errors.New("file not found")
+	return ErrFileNotFound
 }
 func (r *SQLiteRepository) Create(filename string) error {
 	_, err := r.db.Exec("INSERT INTO files(file_name, created, updated) values(?,?,?)", filename, CurrentTime(), "have no update")

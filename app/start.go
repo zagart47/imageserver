@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -57,8 +58,7 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 	fileName := md.Get("filename")[0]
 	f := model.NewFile(fileName)
 	repo := db.NewSQLiteRepository()
-	err := repo.CheckFileName(f.Name)
-	if err.Error() == "file not found" {
+	if err := repo.CheckFileName(f.Name); errors.Is(err, db.ErrFileNotFound) {
 		return err
 	}
 	file, err := os.Open(f.Path)
@@ -76,9 +76,8 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 			return fmt.Errorf("buffer reading error (%s)", err.Error())
 		}
 		req := &pb.DownloadResponse{Fragment: buff[:n]}
-		err1 := stream.Send(req)
-		if err1 != nil {
-			log.Fatal(err1.Error())
+		if err := stream.Send(req); err != nil {
+			log.Fatal(err.Error())
 		}
 	}
 	return nil
@@ -106,19 +105,15 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			err := os.WriteFile(f.Path, f.Buffer.Bytes(), 0644)
-			if err != nil {
+			if err := os.WriteFile(f.Path, f.Buffer.Bytes(), 0644); err != nil {
 				return err
 			}
-			err = repo.CheckFileName(f.Name)
-			if err == fmt.Errorf("file found") {
-				err := repo.Update(f.Name)
-				if err != nil {
+			if err := repo.CheckFileName(f.Name); err.Error() == "file found" {
+				if err := repo.Update(f.Name); err != nil {
 					return err
 				}
-			} else if err == fmt.Errorf("file not found") {
-				err := repo.Create(f.Name)
-				if err != nil {
+			} else if err.Error() == "file not found" {
+				if err := repo.Create(f.Name); err != nil {
 					return err
 				}
 			}
