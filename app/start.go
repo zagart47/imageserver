@@ -9,8 +9,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"imageserver/db"
-	"imageserver/model"
 	pb "imageserver/pkg/proto"
+	"imageserver/storage"
 	"io"
 	"log"
 	"net"
@@ -56,7 +56,7 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 		return fmt.Errorf("md incoming error")
 	}
 	fileName := md.Get("filename")[0]
-	f := model.NewFile(fileName)
+	f := storage.NewFile(fileName)
 	repo := db.NewSQLiteRepository()
 	if err := repo.CheckFileName(f.Name); errors.Is(err, db.ErrFileNotFound) {
 		return err
@@ -84,12 +84,7 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 }
 
 func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFilesResponse, error) {
-	fileRepository := db.NewSQLiteRepository()
-	all, err := fileRepository.All()
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetFilesResponse{Info: all}, nil
+	return &pb.GetFilesResponse{Info: db.DownloadFileList()}, nil
 }
 
 func (s Server) Upload(stream pb.FileService_UploadServer) error {
@@ -98,7 +93,7 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 		return fmt.Errorf("md incoming error")
 	}
 	fileName := md.Get("filename")[0]
-	f := model.NewFile(fileName)
+	f := storage.NewFile(fileName)
 
 	repo := db.NewSQLiteRepository()
 
