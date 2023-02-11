@@ -62,6 +62,12 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 		return err
 	}
 	file, err := os.Open(f.Path)
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}(file)
 	if err != nil {
 		return err
 	}
