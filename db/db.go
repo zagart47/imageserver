@@ -105,11 +105,11 @@ func CurrentTime() string {
 	return time.Now().Format("02.01.2006 15:04:05")
 }
 
-func DownloadFileList() string {
+func DownloadFileList() (string, error) {
 	repo := NewSQLiteRepository()
 	all, err := repo.All()
 	if err != nil {
-		return ""
+		return "", nil
 	}
 	fl := file.ListFile{}
 	for _, v := range all {
@@ -119,5 +119,5 @@ func DownloadFileList() string {
 			Updated:  v.Updated,
 		})
 	}
-	return table.MakeTable(fl)
+	return table.MakeTable(&fl), nil
 }

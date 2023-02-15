@@ -7,67 +7,67 @@ import (
 )
 
 type Lengths struct {
-	FileNameLength int
-	CreatedLength  int
-	UpdatedLength  int
+	FileName int
+	Created  int
+	Updated  int
 }
 
-func NewLengths(lf file.ListFile) *Lengths {
-	sl := MaxStringLengths(lf)
+func NewLengths(lf *file.ListFile) *Lengths {
+	sl := MeasureStrings(lf)
 	return &Lengths{
-		FileNameLength: sl.FileNameLength,
-		CreatedLength:  sl.CreatedLength,
-		UpdatedLength:  sl.UpdatedLength,
+		FileName: sl.FileName,
+		Created:  sl.Created,
+		Updated:  sl.Updated,
 	}
 }
 
-func MakeTable(lf file.ListFile) string {
-	l := NewLengths(lf)
-	upHead := fmt.Sprintf("%c%s%c%s%c%s%c", te.LeftUp, te.RepeatLine(l.FileNameLength), te.MiddleUp, te.RepeatLine(l.CreatedLength), te.MiddleUp, te.RepeatLine(l.UpdatedLength), te.RightUp)
-	midHead := fmt.Sprintf("%c%s%c%s%c%s%c", te.V, Fitting(te.tName, l.FileNameLength), te.V, Fitting(te.tCreated, l.CreatedLength), te.V, Fitting(te.tUpdated, l.UpdatedLength), te.V)
-	downHead := fmt.Sprintf("%c%s%c%s%c%s%c", te.LeftMiddle, te.RepeatLine(l.FileNameLength), te.CenterMiddle, te.RepeatLine(l.CreatedLength), te.CenterMiddle, te.RepeatLine(l.UpdatedLength), te.RightMiddle)
-	var table string
-	for _, v := range lf {
-		table = fmt.Sprintf("%s%c%s%c%s%c%s%c\n", table, te.V, Fitting(v.FileName, l.FileNameLength), te.V, Fitting(v.Created, l.CreatedLength), te.V, Fitting(v.Updated, l.UpdatedLength), te.V)
+func MakeTable(lf *file.ListFile) string {
+	length := NewLengths(lf)
+	topHead := fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftTop, table.RepeatLine(length.FileName), table.CenterTop, table.RepeatLine(length.Created), table.CenterTop, table.RepeatLine(length.Updated), table.RightTop)
+	midHead := fmt.Sprintf("%c%s%c%s%c%s%c", table.Vertical, Fitting(table.FileName, length.FileName), table.Vertical, Fitting(table.Created, length.Created), table.Vertical, Fitting(table.Updated, length.Updated), table.Vertical)
+	bottomHead := fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftMiddle, table.RepeatLine(length.FileName), table.CenterMiddle, table.RepeatLine(length.Created), table.CenterMiddle, table.RepeatLine(length.Updated), table.RightMiddle)
+	var filesInfo string
+	for _, v := range *lf {
+		filesInfo = fmt.Sprintf("%s%c%s%c%s%c%s%c\n", filesInfo, table.Vertical, Fitting(v.FileName, length.FileName), table.Vertical, Fitting(v.Created, length.Created), table.Vertical, Fitting(v.Updated, length.Updated), table.Vertical)
 	}
-	footer := fmt.Sprintf("%c%s%c%s%c%s%c", te.LeftBottom, te.RepeatLine(l.FileNameLength), te.MiddleBottom, te.RepeatLine(l.CreatedLength), te.MiddleBottom, te.RepeatLine(l.UpdatedLength), te.RightBottom)
-	result := fmt.Sprintf("%s\n%s\n%s\n%s%s", upHead, midHead, downHead, table, footer)
+	footer := fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftBottom, table.RepeatLine(length.FileName), table.CenterBottom, table.RepeatLine(length.Created), table.CenterBottom, table.RepeatLine(length.Updated), table.RightBottom)
+	result := fmt.Sprintf("%s\n%s\n%s\n%s%s", topHead, midHead, bottomHead, filesInfo, footer)
 	return result
 }
 
-func MaxStringLengths(lf file.ListFile) Lengths {
-	var maxFileNameLength, maxCreatedLength, maxUpdatedLength int
+func MeasureStrings(lf *file.ListFile) Lengths {
+	var fileName, created, updated int
 	air := 2
-	for _, v := range lf {
-		if len(v.FileName) > maxFileNameLength {
-			maxFileNameLength = len(v.FileName)
+	for _, v := range *lf {
+		if len(v.FileName) > fileName {
+			fileName = len(v.FileName)
 		}
-		if len(v.Created) > maxCreatedLength {
-			maxCreatedLength = len(v.Created)
+		if len(v.Created) > created {
+			created = len(v.Created)
 		}
-		if len(v.Updated) > maxUpdatedLength {
-			maxUpdatedLength = len(v.Updated)
+		if len(v.Updated) > updated {
+			updated = len(v.Updated)
 		}
 	}
-	if maxFileNameLength < len(te.tName) {
-		maxFileNameLength = len(te.tName)
+	if fileName < len(table.FileName) {
+		fileName = len(table.FileName)
 	}
-	if maxCreatedLength < len(te.tCreated) {
-		maxCreatedLength = len(te.tCreated)
+	if created < len(table.Created) {
+		created = len(table.Created)
 	}
-	if maxUpdatedLength < len(te.tUpdated) {
-		maxUpdatedLength = len(te.tUpdated)
+	if updated < len(table.Updated) {
+		updated = len(table.Updated)
 	}
-	return Lengths{maxFileNameLength + air, maxCreatedLength + air, maxUpdatedLength + air}
+	return Lengths{fileName + air, created + air, updated + air}
 }
 
 func Fitting(s string, n int) string {
 	for len(s) < n {
-		s = fmt.Sprintf("%s%c", s, te.WhiteSpace)
+		s = fmt.Sprintf("%s%c", s, table.WhiteSpace)
 		if len(s) == n {
 			break
 		}
-		s = fmt.Sprintf("%c%s", te.WhiteSpace, s)
+		s = fmt.Sprintf("%c%s", table.WhiteSpace, s)
 		if len(s) == n {
 			break
 		}
@@ -75,46 +75,46 @@ func Fitting(s string, n int) string {
 	return s
 }
 
-type CP struct {
+type Table struct {
 	WhiteSpace   rune
-	LeftUp       rune
-	MiddleUp     rune
-	RightUp      rune
-	V            rune
-	H            rune
+	LeftTop      rune
+	CenterTop    rune
+	RightTop     rune
+	Vertical     rune
+	Horizontal   rune
 	LeftMiddle   rune
 	CenterMiddle rune
 	RightMiddle  rune
 	LeftBottom   rune
-	MiddleBottom rune
+	CenterBottom rune
 	RightBottom  rune
-	tName        string
-	tCreated     string
-	tUpdated     string
+	FileName     string
+	Created      string
+	Updated      string
 }
 
-var te = NewCP()
+var table = NewTable()
 
-func (te CP) RepeatLine(n int) string {
-	return strings.Repeat(string(te.H), n)
+func (t Table) RepeatLine(n int) string {
+	return strings.Repeat(string(t.Horizontal), n)
 }
 
-func NewCP() *CP {
-	return &CP{
-		WhiteSpace:   '\u0020',
-		LeftUp:       '\u2554',
-		MiddleUp:     '\u2566',
-		RightUp:      '\u2557',
-		V:            '\u2551',
-		H:            '\u2550',
-		LeftMiddle:   '\u2560',
-		CenterMiddle: '\u256c',
-		RightMiddle:  '\u2563',
-		LeftBottom:   '\u255a',
-		MiddleBottom: '\u2569',
-		RightBottom:  '\u255d',
-		tName:        "File name",
-		tCreated:     "Created",
-		tUpdated:     "Last updated",
+func NewTable() *Table {
+	return &Table{
+		WhiteSpace:   '\u0020', // " "
+		LeftTop:      '\u2554', // "╔"
+		CenterTop:    '\u2566', // "╦"
+		RightTop:     '\u2557', // "╗"
+		Vertical:     '\u2551', // "║"
+		Horizontal:   '\u2550', // "═"
+		LeftMiddle:   '\u2560', // "╠"
+		CenterMiddle: '\u256c', // "╬"
+		RightMiddle:  '\u2563', // "╣"
+		LeftBottom:   '\u255a', // "╚"
+		CenterBottom: '\u2569', // "╩"
+		RightBottom:  '\u255d', // "╝"
+		FileName:     "File name",
+		Created:      "Created",
+		Updated:      "Last updated",
 	}
 }

@@ -90,7 +90,8 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 }
 
 func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFilesResponse, error) {
-	return &pb.GetFilesResponse{Info: db.DownloadFileList()}, nil
+	result, err := db.DownloadFileList()
+	return &pb.GetFilesResponse{Info: result}, err
 }
 
 func (s Server) Upload(stream pb.FileService_UploadServer) error {
@@ -109,11 +110,11 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 			if err := os.WriteFile(f.Path, f.Buffer.Bytes(), 0644); err != nil {
 				return err
 			}
-			if err := repo.CheckFileName(f.Name); err.Error() == "file found" {
+			if err := repo.CheckFileName(f.Name); errors.Is(err, db.ErrFileFound) {
 				if err := repo.Update(f.Name); err != nil {
 					return err
 				}
-			} else if err.Error() == "file not found" {
+			} else if errors.Is(err, db.ErrFileNotFound) {
 				if err := repo.Create(f.Name); err != nil {
 					return err
 				}
