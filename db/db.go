@@ -72,7 +72,7 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 	}
 	for _, v := range all {
 		if v.FileName == filename {
-			return ErrFileFound
+			return nil
 		}
 	}
 	return ErrFileNotFound

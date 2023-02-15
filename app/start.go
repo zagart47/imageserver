@@ -58,32 +58,33 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 	fileName := md.Get("filename")[0]
 	f := storage.NewFile(fileName)
 	repo := db.NewSQLiteRepository()
-	if err := repo.CheckFileName(f.Name); errors.Is(err, db.ErrFileNotFound) {
+	if err := repo.CheckFileName(f.Name); err != nil {
 		return err
 	}
 	file, err := os.Open(f.Path)
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Println(err.Error())
-		}
-	}(file)
 	if err != nil {
 		return err
 	}
-	buff := make([]byte, 1024*1024)
+	defer func(file *os.File) error {
+		err := file.Close()
+		if err != nil {
+			return err
+		}
+		return nil
+	}(file)
+	buffer := make([]byte, 1024*1024)
 
 	for {
-		n, err := file.Read(buff)
+		n, err := file.Read(buffer)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return fmt.Errorf("buffer reading error (%s)", err.Error())
 		}
-		req := &pb.DownloadResponse{Fragment: buff[:n]}
+		req := &pb.DownloadResponse{Fragment: buffer[:n]}
 		if err := stream.Send(req); err != nil {
-			log.Fatal(err.Error())
+			return err
 		}
 	}
 	return nil
@@ -110,7 +111,7 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 			if err := os.WriteFile(f.Path, f.Buffer.Bytes(), 0644); err != nil {
 				return err
 			}
-			if err := repo.CheckFileName(f.Name); errors.Is(err, db.ErrFileFound) {
+			if err := repo.CheckFileName(f.Name); err == nil {
 				if err := repo.Update(f.Name); err != nil {
 					return err
 				}
@@ -118,6 +119,8 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 				if err := repo.Create(f.Name); err != nil {
 					return err
 				}
+			} else if err != nil {
+				return err
 			}
 			return stream.SendAndClose(&pb.UploadResponse{})
 		}
