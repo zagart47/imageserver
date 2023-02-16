@@ -5,6 +5,7 @@ import (
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
+	"imageserver/file"
 	"os"
 	"testing"
 	"time"
@@ -16,12 +17,17 @@ func TestCurrentTime(t *testing.T) {
 }
 
 func TestNewSQLiteRepository(t *testing.T) {
+	testfile := "test.db"
+	_, err := os.Create(testfile)
+	defer os.Remove(testfile)
+	require.NoError(t, err)
+	db, err := sql.Open("sqlite3", testfile)
+	defer db.Close()
 	var sq *SQLiteRepository
-	require.IsType(t, NewSQLiteRepository(DB), sq)
-
+	require.IsType(t, NewSQLiteRepository(db), sq)
 }
 
-func TestSQLiteRepository_All(t *testing.T) {
+func TestDB_All(t *testing.T) {
 	testfile := "test.db"
 	_, err := os.Create(testfile)
 	defer os.Remove(testfile)
@@ -37,26 +43,25 @@ func TestSQLiteRepository_All(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("1test", func(t *testing.T) {
-		_, err := r.All()
+		_, err := r.AllRecords()
 		require.NoError(t, err)
 	})
 
 	t.Run("2test", func(t *testing.T) {
 		_, err = db.Exec("drop table files")
 		require.NoError(t, err)
-		_, err := r.All()
+		_, err := r.AllRecords()
 		require.NoError(t, err)
 	})
 
 	db.Close()
 	t.Run("3test", func(t *testing.T) {
-		_, err := r.All()
+		_, err := r.AllRecords()
 		require.Error(t, err)
 	})
-
 }
 
-func TestSQLiteRepository_CheckFileName(t *testing.T) {
+func TestDB_CheckFileName(t *testing.T) {
 	testfile := "test.db"
 	_, err := os.Create(testfile)
 	defer os.Remove(testfile)
@@ -65,8 +70,9 @@ func TestSQLiteRepository_CheckFileName(t *testing.T) {
 	defer db.Close()
 	r := NewSQLiteRepository(db)
 	require.NoError(t, err)
-	_, err = db.Exec("drop table files")
-	r.Migrate()
+	_, err = db.Exec("DROP TABLE files")
+	err = r.Migrate()
+	require.NoError(t, err)
 	err = r.Create("test")
 	require.NoError(t, err)
 
@@ -76,22 +82,22 @@ func TestSQLiteRepository_CheckFileName(t *testing.T) {
 	})
 	t.Run("2test", func(t *testing.T) {
 		err := r.CheckFileName("fail")
-		require.NoError(t, err)
+		require.Error(t, err)
 	})
-	t.Run("4test", func(t *testing.T) {
+	t.Run("3test", func(t *testing.T) {
 		err := r.CheckFileName("")
 		require.Error(t, err)
 	})
 
 	db.Close()
-	t.Run("3test", func(t *testing.T) {
+	t.Run("4test", func(t *testing.T) {
 		err := r.CheckFileName("test")
 		require.Error(t, err)
 	})
 
 }
 
-func TestSQLiteRepository_Create(t *testing.T) {
+func TestDB_Create(t *testing.T) {
 	testfile := "test.db"
 	_, err := os.Create(testfile)
 	defer os.Remove(testfile)
@@ -108,19 +114,19 @@ func TestSQLiteRepository_Create(t *testing.T) {
 	})
 
 	t.Run("2test", func(t *testing.T) {
-		_, err = db.Exec("drop table files")
+		_, err = db.Exec("DROP TABLE files")
 		err = r.Create("")
 		if err == errors.New("invalid updated filename") {
 			t.Skip()
 		}
 	})
 	t.Run("3test", func(t *testing.T) {
-		_, err = db.Exec("drop table files")
+		_, err = db.Exec("DROP TABLE files")
 		err = r.Create("test")
 	})
 }
 
-func TestSQLiteRepository_Migrate(t *testing.T) {
+func TestDB_Migrate(t *testing.T) {
 	testfile := "test.db"
 	db, err := sql.Open("sqlite3", testfile)
 	defer db.Close()
@@ -133,7 +139,7 @@ func TestSQLiteRepository_Migrate(t *testing.T) {
 	})
 }
 
-func TestSQLiteRepository_Update(t *testing.T) {
+func TestDB_Update(t *testing.T) {
 	testfile := "test.db"
 	_, err := os.Create(testfile)
 	require.NoError(t, err)
@@ -166,4 +172,39 @@ func TestSQLiteRepository_Update(t *testing.T) {
 		require.Error(t, err)
 	})
 
+}
+
+func TestSDB_DownloadFileList(t *testing.T) {
+	testfile := "test.db"
+	fl := file.ListFile{}
+	_, err := os.Create(testfile)
+	require.NoError(t, err)
+	defer os.Remove(testfile)
+	db, err := sql.Open("sqlite3", testfile)
+	defer db.Close()
+	r := NewSQLiteRepository(db)
+	err = r.Migrate()
+	require.NoError(t, err)
+
+	t.Run("1test", func(t *testing.T) {
+		list, err := r.DownloadFileList()
+		require.IsType(t, &fl, list)
+		require.NoError(t, err)
+	})
+
+	t.Run("2test", func(t *testing.T) {
+		err = r.Create("test")
+		require.NoError(t, err)
+		list, err := r.DownloadFileList()
+		require.IsType(t, &fl, list)
+		require.NoError(t, err)
+	})
+
+	t.Run("3test", func(t *testing.T) {
+		err = r.Update("test")
+		require.NoError(t, err)
+		list, err := r.DownloadFileList()
+		require.IsType(t, &fl, list)
+		require.NoError(t, err)
+	})
 }

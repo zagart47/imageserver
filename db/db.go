@@ -5,7 +5,6 @@ import (
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	"imageserver/file"
-	"imageserver/table"
 	"time"
 )
 
@@ -14,7 +13,6 @@ var DB, _ = sql.Open("sqlite3", "db/files.db")
 var (
 	ErrNotExists    = errors.New("row not exists")
 	ErrUpdateFailed = errors.New("update failed")
-	ErrFileFound    = errors.New("file found")
 	ErrFileNotFound = errors.New("file not found")
 )
 
@@ -22,13 +20,11 @@ type SQLiteRepository struct {
 	db *sql.DB
 }
 
-func NewSQLiteRepository() *SQLiteRepository {
+func NewSQLiteRepository(db *sql.DB) *SQLiteRepository {
 	return &SQLiteRepository{
-		db: DB,
+		db: db,
 	}
 }
-
-var Repo = NewSQLiteRepository()
 
 func (r *SQLiteRepository) Migrate() error {
 	query := `
@@ -59,14 +55,13 @@ func (r *SQLiteRepository) Update(filename string) error {
 }
 
 func (r *SQLiteRepository) CheckFileName(filename string) error {
-	if filename == "" {
+	if len(filename) == 0 {
 		return errors.New("invalid updated filename")
 	}
-	err := r.Migrate()
-	if err != nil {
+	if err := r.Migrate(); err != nil {
 		return err
 	}
-	all, err := r.All()
+	all, err := r.AllRecords()
 	if err != nil {
 		return err
 	}
@@ -78,7 +73,7 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 	return ErrFileNotFound
 }
 
-func (r *SQLiteRepository) All() (file.ListFile, error) {
+func (r *SQLiteRepository) AllRecords() (file.ListFile, error) {
 	err := r.Migrate()
 	if err != nil {
 		return file.ListFile{}, err
@@ -105,11 +100,10 @@ func CurrentTime() string {
 	return time.Now().Format("02.01.2006 15:04:05")
 }
 
-func DownloadFileList() (string, error) {
-	repo := NewSQLiteRepository()
-	all, err := repo.All()
+func (r *SQLiteRepository) DownloadFileList() (*file.ListFile, error) {
+	all, err := r.AllRecords()
 	if err != nil {
-		return "", nil
+		return nil, err
 	}
 	fl := file.ListFile{}
 	for _, v := range all {
@@ -119,5 +113,5 @@ func DownloadFileList() (string, error) {
 			Updated:  v.Updated,
 		})
 	}
-	return table.MakeTable(&fl), nil
+	return &fl, nil
 }

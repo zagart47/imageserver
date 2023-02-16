@@ -11,6 +11,7 @@ import (
 	"imageserver/db"
 	pb "imageserver/pkg/proto"
 	"imageserver/storage"
+	"imageserver/table"
 	"io"
 	"log"
 	"net"
@@ -18,27 +19,27 @@ import (
 )
 
 func Start() {
-	listener1, err := net.Listen("tcp", "0.0.0.0:80")
+	fileListener, err := net.Listen("tcp", "0.0.0.0:80")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer listener1.Close()
-	grpcServer1 := grpc.NewServer(grpc.MaxConcurrentStreams(10))
-	pb.RegisterFileServiceServer(grpcServer1, &Server{})
-	defer grpcServer1.GracefulStop()
+	defer fileListener.Close()
+	fileServer := grpc.NewServer(grpc.MaxConcurrentStreams(10))
+	pb.RegisterFileServiceServer(fileServer, &Server{})
+	defer fileServer.GracefulStop()
 
-	listener2, err := net.Listen("tcp", "0.0.0.0:81")
+	listListener, err := net.Listen("tcp", "0.0.0.0:81")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer listener2.Close()
-	grpcServer2 := grpc.NewServer(grpc.MaxConcurrentStreams(100))
-	pb.RegisterListServiceServer(grpcServer2, &ListServer{})
-	defer grpcServer2.GracefulStop()
+	defer listListener.Close()
+	listServer := grpc.NewServer(grpc.MaxConcurrentStreams(100))
+	pb.RegisterListServiceServer(listServer, &ListServer{})
+	defer listServer.GracefulStop()
 	go func() {
-		log.Fatal(grpcServer1.Serve(listener1))
+		log.Fatal(fileServer.Serve(fileListener))
 	}()
-	log.Fatal(grpcServer2.Serve(listener2))
+	log.Fatal(listServer.Serve(listListener))
 
 }
 
@@ -50,40 +51,40 @@ type ListServer struct {
 	pb.UnimplementedListServiceServer
 }
 
+var repo = db.NewSQLiteRepository(db.DB)
+
 func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_DownloadServer) error {
 	md, ok := metadata.FromIncomingContext(stream.Context())
 	if !ok {
 		return fmt.Errorf("md incoming error")
 	}
-	fileName := md.Get("filename")[0]
-	f := storage.NewFile(fileName)
-	repo := db.NewSQLiteRepository()
-	if err := repo.CheckFileName(f.Name); err != nil {
+	mdFileName := md.Get("filename")[0]
+	file := storage.NewFile(mdFileName)
+	if err := repo.CheckFileName(file.Name); err != nil {
 		return err
 	}
-	file, err := os.Open(f.Path)
+	open, err := os.Open(file.Path)
 	if err != nil {
 		return err
 	}
 	defer func(file *os.File) error {
-		err := file.Close()
-		if err != nil {
+		if err := file.Close(); err != nil {
 			return err
 		}
 		return nil
-	}(file)
+	}(open)
 	buffer := make([]byte, 1024*1024)
 
 	for {
-		n, err := file.Read(buffer)
+		n, err := open.Read(buffer)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return fmt.Errorf("buffer reading error (%s)", err.Error())
 		}
-		req := &pb.DownloadResponse{Fragment: buffer[:n]}
-		if err := stream.Send(req); err != nil {
+		resp := &pb.DownloadResponse{Fragment: buffer[:n]}
+		if err := stream.Send(resp); err != nil {
 			return err
 		}
 	}
@@ -91,7 +92,8 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 }
 
 func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFilesResponse, error) {
-	result, err := db.DownloadFileList()
+	fl, err := repo.DownloadFileList()
+	result := table.MakeTable(fl)
 	return &pb.GetFilesResponse{Info: result}, err
 }
 
@@ -100,23 +102,20 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 	if !ok {
 		return fmt.Errorf("md incoming error")
 	}
-	fileName := md.Get("filename")[0]
-	f := storage.NewFile(fileName)
-
-	repo := db.NewSQLiteRepository()
+	file := storage.NewFile(md.Get("filename")[0])
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			if err := os.WriteFile(f.Path, f.Buffer.Bytes(), 0644); err != nil {
+			if err := os.WriteFile(file.Path, file.Buffer.Bytes(), 0644); err != nil {
 				return err
 			}
-			if err := repo.CheckFileName(f.Name); err == nil {
-				if err := repo.Update(f.Name); err != nil {
+			if err := repo.CheckFileName(file.Name); err == nil {
+				if err := repo.Update(file.Name); err != nil {
 					return err
 				}
 			} else if errors.Is(err, db.ErrFileNotFound) {
-				if err := repo.Create(f.Name); err != nil {
+				if err := repo.Create(file.Name); err != nil {
 					return err
 				}
 			} else if err != nil {
@@ -124,7 +123,7 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 			}
 			return stream.SendAndClose(&pb.UploadResponse{})
 		}
-		f.Buffer.Write(req.GetFragment())
+		file.Buffer.Write(req.GetFragment())
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
