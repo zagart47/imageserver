@@ -207,4 +207,9 @@ func TestSDB_DownloadFileList(t *testing.T) {
 		require.IsType(t, &fl, list)
 		require.NoError(t, err)
 	})
+
+	db.Close()
+	list, err := r.DownloadFileList()
+	require.IsType(t, &fl, list)
+	require.Error(t, err)
 }
