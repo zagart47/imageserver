@@ -86,12 +86,12 @@ func (r *SQLiteRepository) AllRecords() (file.ListFile, error) {
 
 	var all file.ListFile
 	for rows.Next() {
-		var file file.File
-		err = rows.Scan(&file.FileName, &file.Created, &file.Updated)
+		var f file.File
+		err = rows.Scan(&f.FileName, &f.Created, &f.Updated)
 		if err != nil {
 			return all, err
 		}
-		all = append(all, file)
+		all = append(all, f)
 	}
 	return all, nil
 }
