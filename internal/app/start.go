@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"imageserver/db"
-	pb "imageserver/pkg/proto"
-	"imageserver/storage"
-	"imageserver/table"
+	"imageserver/internal/myerror"
+	"imageserver/internal/repository"
+	"imageserver/internal/storage"
+	"imageserver/internal/table"
+	pb "imageserver/proto"
 	"io"
 	"log"
 	"net"
@@ -19,7 +21,9 @@ import (
 )
 
 func Start() {
-	fileListener, err := net.Listen("tcp", "0.0.0.0:80")
+	err := godotenv.Load()
+	fileHost := os.Getenv("fileHost")
+	fileListener, err := net.Listen("tcp", fileHost)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,7 +32,8 @@ func Start() {
 	pb.RegisterFileServiceServer(fileServer, &Server{})
 	defer fileServer.GracefulStop()
 
-	listListener, err := net.Listen("tcp", "0.0.0.0:81")
+	listHost := os.Getenv("listHost")
+	listListener, err := net.Listen("tcp", listHost)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,12 +56,12 @@ type ListServer struct {
 	pb.UnimplementedListServiceServer
 }
 
-var repo = db.NewSQLiteRepository(db.DB)
+var repo = repository.NewSQLiteRepository(repository.DB)
 
 func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_DownloadServer) error {
 	md, ok := metadata.FromIncomingContext(stream.Context())
 	if !ok {
-		return fmt.Errorf("md incoming error")
+		return myerror.Err.MdError
 	}
 	mdFileName := md.Get("filename")[0]
 	file := storage.NewFile(mdFileName)
@@ -73,7 +78,7 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 		}
 		return nil
 	}(open)
-	buffer := make([]byte, 1024*1024)
+	buffer := make([]byte, 64*1024)
 
 	for {
 		n, err := open.Read(buffer)
@@ -81,18 +86,18 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("buffer reading error (%s)", err.Error())
+			return myerror.Err.BuffError
 		}
 		resp := &pb.DownloadResponse{Fragment: buffer[:n]}
 		if err := stream.Send(resp); err != nil {
-			return err
+			return status.Error(codes.Internal, err.Error())
 		}
 	}
 	return nil
 }
 
 func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFilesResponse, error) {
-	fl, err := repo.DownloadFileList()
+	fl, err := repo.ShowAllRecords()
 	result := table.MakeTable(fl)
 	return &pb.GetFilesResponse{Info: result}, err
 }
@@ -114,7 +119,7 @@ func (s Server) Upload(stream pb.FileService_UploadServer) error {
 				if err := repo.Update(file.Name); err != nil {
 					return err
 				}
-			} else if errors.Is(err, db.ErrFileNotFound) {
+			} else if errors.Is(err, myerror.Err.FileNotFound) {
 				if err := repo.Create(file.Name); err != nil {
 					return err
 				}

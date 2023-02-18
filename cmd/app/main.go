@@ -1,7 +1,7 @@
 package main
 
 import (
-	"imageserver/app"
+	"imageserver/internal/app"
 )
 
 func main() {

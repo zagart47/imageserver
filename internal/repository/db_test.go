@@ -1,11 +1,11 @@
-package db
+package repository
 
 import (
 	"database/sql"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
-	"imageserver/file"
+	"imageserver/internal/model"
 	"os"
 	"testing"
 	"time"
@@ -23,7 +23,7 @@ func TestNewSQLiteRepository(t *testing.T) {
 	require.NoError(t, err)
 	db, err := sql.Open("sqlite3", testfile)
 	defer db.Close()
-	var sq *SQLiteRepository
+	var sq SQLiteRepository
 	require.IsType(t, NewSQLiteRepository(db), sq)
 }
 
@@ -43,20 +43,20 @@ func TestDB_All(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("1test", func(t *testing.T) {
-		_, err := r.AllRecords()
+		_, err := r.ShowAllRecords()
 		require.NoError(t, err)
 	})
 
 	t.Run("2test", func(t *testing.T) {
 		_, err = db.Exec("drop table files")
 		require.NoError(t, err)
-		_, err := r.AllRecords()
+		_, err := r.ShowAllRecords()
 		require.NoError(t, err)
 	})
 
 	db.Close()
 	t.Run("3test", func(t *testing.T) {
-		_, err := r.AllRecords()
+		_, err := r.ShowAllRecords()
 		require.Error(t, err)
 	})
 }
@@ -174,9 +174,9 @@ func TestDB_Update(t *testing.T) {
 
 }
 
-func TestSDB_DownloadFileList(t *testing.T) {
+func TestDB_ShowAllRecords(t *testing.T) {
 	testfile := "test.db"
-	fl := file.ListFile{}
+	fl := model.ListFile{}
 	_, err := os.Create(testfile)
 	require.NoError(t, err)
 	defer os.Remove(testfile)
@@ -187,29 +187,29 @@ func TestSDB_DownloadFileList(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("1test", func(t *testing.T) {
-		list, err := r.DownloadFileList()
-		require.IsType(t, &fl, list)
+		list, err := r.ShowAllRecords()
+		require.IsType(t, fl, list)
 		require.NoError(t, err)
 	})
 
 	t.Run("2test", func(t *testing.T) {
 		err = r.Create("test")
 		require.NoError(t, err)
-		list, err := r.DownloadFileList()
-		require.IsType(t, &fl, list)
+		list, err := r.ShowAllRecords()
+		require.IsType(t, fl, list)
 		require.NoError(t, err)
 	})
 
 	t.Run("3test", func(t *testing.T) {
 		err = r.Update("test")
 		require.NoError(t, err)
-		list, err := r.DownloadFileList()
-		require.IsType(t, &fl, list)
+		list, err := r.ShowAllRecords()
+		require.IsType(t, fl, list)
 		require.NoError(t, err)
 	})
 
 	db.Close()
-	list, err := r.DownloadFileList()
-	require.IsType(t, &fl, list)
+	list, err := r.ShowAllRecords()
+	require.IsType(t, fl, list)
 	require.Error(t, err)
 }

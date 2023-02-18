@@ -11,10 +11,10 @@ type File struct {
 	Buffer *bytes.Buffer
 }
 
-func NewFile(name string) *File {
+func NewFile(name string) File {
 	dir := "files"
 	pathToSave := fmt.Sprintf("%s/%s", dir, name)
-	return &File{
+	return File{
 		Name:   name,
 		Path:   pathToSave,
 		Buffer: &bytes.Buffer{},

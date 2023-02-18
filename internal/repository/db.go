@@ -1,31 +1,28 @@
-package db
+package repository
 
 import (
 	"database/sql"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
-	"imageserver/file"
+	"imageserver/internal/config"
+	"imageserver/internal/model"
+	"imageserver/internal/myerror"
 	"time"
 )
 
-var DB, _ = sql.Open("sqlite3", "db/files.db")
-
-var (
-	ErrNotExists    = errors.New("row not exists")
-	ErrUpdateFailed = errors.New("update failed")
-	ErrFileNotFound = errors.New("file not found")
-)
+var DB, _ = sql.Open(config.SqlConnect.DriverName, config.SqlConnect.DataSourceName)
 
 type SQLiteRepository struct {
 	db *sql.DB
 }
 
-func NewSQLiteRepository(db *sql.DB) *SQLiteRepository {
-	return &SQLiteRepository{
+func NewSQLiteRepository(db *sql.DB) SQLiteRepository {
+	return SQLiteRepository{
 		db: db,
 	}
 }
 
+// Migrate prepares the table of database for work.
 func (r *SQLiteRepository) Migrate() error {
 	query := `
     CREATE TABLE IF NOT EXISTS files(
@@ -38,14 +35,17 @@ func (r *SQLiteRepository) Migrate() error {
 	_, err := r.db.Exec(query)
 	return err
 }
+
+// Create adds the file name with the current date and time to the table of database.
 func (r *SQLiteRepository) Create(filename string) error {
 	_, err := r.db.Exec("INSERT INTO files(file_name, created, updated) values(?,?,?)", filename, CurrentTime(), "have no update")
 	if err != nil {
-		return ErrUpdateFailed
+		return myerror.Err.UpdateFailed
 	}
 	return nil
 }
 
+// Update adds the current date and time to the "updated" column.
 func (r *SQLiteRepository) Update(filename string) error {
 	_, err := r.db.Exec("UPDATE files SET updated = ? WHERE file_name = ?", CurrentTime(), filename)
 	if err != nil {
@@ -54,6 +54,9 @@ func (r *SQLiteRepository) Update(filename string) error {
 	return nil
 }
 
+// CheckFileName searches for the passed file name in the database table.
+// If file name is found, Update is called.
+// If no file name is found, then Create is called.
 func (r *SQLiteRepository) CheckFileName(filename string) error {
 	if len(filename) == 0 {
 		return errors.New("invalid updated filename")
@@ -61,7 +64,7 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 	if err := r.Migrate(); err != nil {
 		return err
 	}
-	all, err := r.AllRecords()
+	all, err := r.ShowAllRecords()
 	if err != nil {
 		return err
 	}
@@ -70,23 +73,24 @@ func (r *SQLiteRepository) CheckFileName(filename string) error {
 			return nil
 		}
 	}
-	return ErrFileNotFound
+	return myerror.Err.FileNotFound
 }
 
-func (r *SQLiteRepository) AllRecords() (file.ListFile, error) {
+// ShowAllRecords generates a record structure from all available rows in the database table.
+func (r *SQLiteRepository) ShowAllRecords() (model.ListFile, error) {
 	err := r.Migrate()
 	if err != nil {
-		return file.ListFile{}, err
+		return model.ListFile{}, err
 	}
 	rows, err := r.db.Query("SELECT file_name, created, updated FROM files")
 	if err != nil {
-		return file.ListFile{}, ErrNotExists
+		return model.ListFile{}, myerror.Err.NotExists
 	}
 	defer rows.Close()
 
-	var all file.ListFile
+	var all model.ListFile
 	for rows.Next() {
-		var f file.File
+		var f model.File
 		err = rows.Scan(&f.FileName, &f.Created, &f.Updated)
 		if err != nil {
 			return all, err
@@ -96,22 +100,7 @@ func (r *SQLiteRepository) AllRecords() (file.ListFile, error) {
 	return all, nil
 }
 
+// CurrentTime returns the current date and time.
 func CurrentTime() string {
 	return time.Now().Format("02.01.2006 15:04:05")
-}
-
-func (r *SQLiteRepository) DownloadFileList() (*file.ListFile, error) {
-	all, err := r.AllRecords()
-	if err != nil {
-		return nil, err
-	}
-	fl := file.ListFile{}
-	for _, v := range all {
-		fl = append(fl, file.File{
-			FileName: v.FileName,
-			Created:  v.Created,
-			Updated:  v.Updated,
-		})
-	}
-	return &fl, nil
 }
