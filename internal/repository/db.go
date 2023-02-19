@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	"imageserver/internal/config"
 	"imageserver/internal/model"
@@ -58,7 +59,7 @@ func (r *SQLiteRepository) Update(filename string) error {
 // If no file name is found, then Create is called.
 func (r *SQLiteRepository) CheckFileName(filename string) error {
 	if len(filename) == 0 {
-		return myerror.Err.InvFileName
+		return errors.New("invalid updated filename")
 	}
 	if err := r.Migrate(); err != nil {
 		return err
