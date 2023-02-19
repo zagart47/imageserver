@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -20,14 +19,18 @@ import (
 	"os"
 )
 
-func Start() {
+func Run() {
 	err := godotenv.Load()
 	fileHost := os.Getenv("fileHost")
 	fileListener, err := net.Listen("tcp", fileHost)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer fileListener.Close()
+	defer func(fileListener net.Listener) {
+		if err := fileListener.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}(fileListener)
 	fileServer := grpc.NewServer(grpc.MaxConcurrentStreams(10))
 	pb.RegisterFileServiceServer(fileServer, &Server{})
 	defer fileServer.GracefulStop()
@@ -37,7 +40,11 @@ func Start() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer listListener.Close()
+	defer func(listListener net.Listener) {
+		if err := listListener.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}(listListener)
 	listServer := grpc.NewServer(grpc.MaxConcurrentStreams(100))
 	pb.RegisterListServiceServer(listServer, &ListServer{})
 	defer listServer.GracefulStop()
@@ -61,7 +68,7 @@ var repo = repository.NewSQLiteRepository(repository.DB)
 func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_DownloadServer) error {
 	md, ok := metadata.FromIncomingContext(stream.Context())
 	if !ok {
-		return myerror.Err.MdError
+		return myerror.Err.Metadata
 	}
 	mdFileName := md.Get("filename")[0]
 	file := storage.NewFile(mdFileName)
@@ -72,11 +79,10 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 	if err != nil {
 		return err
 	}
-	defer func(file *os.File) error {
+	defer func(file *os.File) {
 		if err := file.Close(); err != nil {
-			return err
+			log.Print(err.Error())
 		}
-		return nil
 	}(open)
 	buffer := make([]byte, 64*1024)
 
@@ -86,7 +92,7 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 			break
 		}
 		if err != nil {
-			return myerror.Err.BuffError
+			return myerror.Err.Buffer
 		}
 		resp := &pb.DownloadResponse{Fragment: buffer[:n]}
 		if err := stream.Send(resp); err != nil {
@@ -105,7 +111,7 @@ func (ls ListServer) GetFiles(context.Context, *pb.GetFilesRequest) (*pb.GetFile
 func (s Server) Upload(stream pb.FileService_UploadServer) error {
 	md, ok := metadata.FromIncomingContext(stream.Context())
 	if !ok {
-		return fmt.Errorf("md incoming error")
+		return myerror.Err.Metadata
 	}
 	file := storage.NewFile(md.Get("filename")[0])
 

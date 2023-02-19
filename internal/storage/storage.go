@@ -2,7 +2,7 @@ package storage
 
 import (
 	"bytes"
-	"fmt"
+	"strings"
 )
 
 type File struct {
@@ -13,7 +13,8 @@ type File struct {
 
 func NewFile(name string) File {
 	dir := "files"
-	pathToSave := fmt.Sprintf("%s/%s", dir, name)
+	els := []string{dir, name}
+	pathToSave := strings.Join(els, "/")
 	return File{
 		Name:   name,
 		Path:   pathToSave,

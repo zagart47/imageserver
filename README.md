@@ -17,7 +17,7 @@ git clone https://github.com/zagart47/imageserver.git
 ### Start server
 ```bash
 cd imageserver
-go run api/server.go
+go run cmd/server.go
 ```
 
 # Attention! You need use the client to work with this server!!!
