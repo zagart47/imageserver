@@ -4,7 +4,7 @@
 # Image Server.
 
 The service knows how to upload, count and download files on demand.
-To use the service, you need to use the client, the link to it is presented below.
+To use the service, you need to use the [client](https://github.com/zagart47/imageclient), the link to it is presented below.
 The service is written as part of a test assignment.
 The service uses two ports. Port ```80``` is used to upload and download files. Port ```81``` is used to view the file list.
 
