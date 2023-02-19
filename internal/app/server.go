@@ -65,7 +65,7 @@ type ListServer struct {
 
 var repo = repository.NewSQLiteRepository(repository.DB)
 
-func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_DownloadServer) error {
+func (s Server) Download(_ *pb.DownloadRequest, stream pb.FileService_DownloadServer) error {
 	md, ok := metadata.FromIncomingContext(stream.Context())
 	if !ok {
 		return myerror.Err.MetaData
@@ -79,11 +79,10 @@ func (s Server) Download(request *pb.DownloadRequest, stream pb.FileService_Down
 	if err != nil {
 		return err
 	}
-	defer func(file *os.File) error {
+	defer func(file *os.File) {
 		if err := file.Close(); err != nil {
-			return err
+			log.Print(err.Error())
 		}
-		return nil
 	}(open)
 	buffer := make([]byte, 64*1024)
 
