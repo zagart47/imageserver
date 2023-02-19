@@ -21,22 +21,27 @@ func NewLengths(lf model.ListFile) Lengths {
 	}
 }
 
-func AddToForm(form []string, s string) {
-	form = append(form, s)
+func (f *Form) AddToForm(s string) {
+	f.form = append(f.form, s)
+}
+
+type Form struct {
+	form []string
+	el   string
 }
 
 // MakeTable converts model.ListFile to a table of type string.
 func MakeTable(lf model.ListFile) string {
 	length := NewLengths(lf)
-	var tableForm []string
-	tableForm = append(tableForm, fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftTop, table.RepeatLine(length.FileName), table.CenterTop, table.RepeatLine(length.Created), table.CenterTop, table.RepeatLine(length.Updated), table.RightTop))
-	tableForm = append(tableForm, fmt.Sprintf("%c%s%c%s%c%s%c", table.Vertical, Fitting(table.FileName, length.FileName), table.Vertical, Fitting(table.Created, length.Created), table.Vertical, Fitting(table.Updated, length.Updated), table.Vertical))
-	tableForm = append(tableForm, fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftMiddle, table.RepeatLine(length.FileName), table.CenterMiddle, table.RepeatLine(length.Created), table.CenterMiddle, table.RepeatLine(length.Updated), table.RightMiddle))
+	f := &Form{}
+	f.AddToForm(fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftTop, table.RepeatLine(length.FileName), table.CenterTop, table.RepeatLine(length.Created), table.CenterTop, table.RepeatLine(length.Updated), table.RightTop))
+	f.AddToForm(fmt.Sprintf("%c%s%c%s%c%s%c", table.Vertical, Fitting(table.FileName, length.FileName), table.Vertical, Fitting(table.Created, length.Created), table.Vertical, Fitting(table.Updated, length.Updated), table.Vertical))
+	f.AddToForm(fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftMiddle, table.RepeatLine(length.FileName), table.CenterMiddle, table.RepeatLine(length.Created), table.CenterMiddle, table.RepeatLine(length.Updated), table.RightMiddle))
 	for _, v := range lf {
-		tableForm = append(tableForm, fmt.Sprintf("%c%s%c%s%c%s%c", table.Vertical, Fitting(v.FileName, length.FileName), table.Vertical, Fitting(v.Created, length.Created), table.Vertical, Fitting(v.Updated, length.Updated), table.Vertical))
+		f.AddToForm(fmt.Sprintf("%c%s%c%s%c%s%c", table.Vertical, Fitting(v.FileName, length.FileName), table.Vertical, Fitting(v.Created, length.Created), table.Vertical, Fitting(v.Updated, length.Updated), table.Vertical))
 	}
-	tableForm = append(tableForm, fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftBottom, table.RepeatLine(length.FileName), table.CenterBottom, table.RepeatLine(length.Created), table.CenterBottom, table.RepeatLine(length.Updated), table.RightBottom))
-	result := strings.Join(tableForm, "\n")
+	f.AddToForm(fmt.Sprintf("%c%s%c%s%c%s%c", table.LeftBottom, table.RepeatLine(length.FileName), table.CenterBottom, table.RepeatLine(length.Created), table.CenterBottom, table.RepeatLine(length.Updated), table.RightBottom))
+	result := strings.Join(f.form, "\n")
 	return result
 }
 
